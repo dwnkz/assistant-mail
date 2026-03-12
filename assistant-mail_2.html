@@ -84,6 +84,11 @@
     <div class="login-icon">✉</div>
     <h1>Assistant Mail</h1>
     <p>Connectez-vous à votre Outlook professionnel</p>
+    <div style="margin-bottom:24px;">
+      <label style="display:block;color:#666;font-size:12px;margin-bottom:8px;letter-spacing:0.05em;">CLÉ API ANTHROPIC (pour l'analyse IA)</label>
+      <input id="api-key-input" type="password" placeholder="sk-ant-..." style="width:320px;background:#1a1a24;border:1px solid #2a2a3a;border-radius:4px;padding:10px 14px;color:#e8e8e0;font-size:13px;outline:none;font-family:Georgia,serif;text-align:center;" />
+      <div style="font-size:11px;color:#444;margin-top:6px;">Votre clé reste sur votre appareil uniquement</div>
+    </div>
     <button id="login-btn" onclick="login()">Se connecter avec Microsoft</button>
     <p class="login-note">Authentification sécurisée via Microsoft OAuth 2.0</p>
   </div>
@@ -313,10 +318,13 @@ async function runAI() {
   };
 
   try {
+    const apiKey = localStorage.getItem('anthropic_key') || '';
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify({
