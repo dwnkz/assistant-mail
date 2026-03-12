@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistant Mail Outlook</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e8e8e0; font-family: Georgia, serif; height: 100vh; display: flex; flex-direction: column; }
+
+  #login-screen { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+  #login-screen h1 { font-size: 32px; font-weight: 300; letter-spacing: 0.1em; margin-bottom: 8px; }
+  #login-screen p { color: #888; margin-bottom: 40px; font-size: 14px; }
+  #login-btn { display: inline-block; padding: 14px 40px; background: #0078d4; color: #fff; text-decoration: none; border-radius: 4px; font-size: 15px; cursor: pointer; border: none; font-family: Georgia, serif; }
+  #login-btn:hover { background: #005a9e; }
+  .login-icon { font-size: 64px; margin-bottom: 16px; }
+  .login-note { margin-top: 20px; color: #444; font-size: 12px; }
+
+  #loading-screen { flex: 1; display: none; align-items: center; justify-content: center; color: #888; text-align: center; }
+
+  #app { flex: 1; display: none; flex-direction: column; height: 100vh; }
+
+  #header { background: #111118; border-bottom: 1px solid #1e1e2a; padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  #header .title { font-size: 16px; font-weight: 600; }
+  #header .subtitle { font-size: 11px; color: #666; }
+  #header .filters { margin-left: auto; display: flex; gap: 8px; }
+  .filter-btn { padding: 5px 14px; background: transparent; border: 1px solid #2a2a3a; color: #888; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: Georgia, serif; }
+  .filter-btn.active { background: #0078d4; border-color: #0078d4; color: #fff; }
+
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  #sidebar { width: 340px; border-right: 1px solid #1e1e2a; overflow-y: auto; background: #0d0d14; flex-shrink: 0; }
+  #search-box { padding: 12px 16px; border-bottom: 1px solid #1a1a24; }
+  #search-input { width: 100%; background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 4px; padding: 8px 12px; color: #e8e8e0; font-size: 13px; outline: none; font-family: Georgia, serif; }
+  #mail-count { font-size: 11px; color: #555; padding: 8px 16px; letter-spacing: 0.06em; }
+  .email-item { padding: 14px 16px; border-bottom: 1px solid #141420; cursor: pointer; border-left: 3px solid transparent; transition: background 0.15s; }
+  .email-item:hover { background: #13131c; }
+  .email-item.active { background: #16161f; border-left-color: #0078d4; }
+  .email-item.unread { border-left-color: #0078d4; }
+  .email-sender { font-size: 13px; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; display: inline-block; }
+  .email-item.unread .email-sender { font-weight: 700; color: #e8e8e0; }
+  .email-time { font-size: 11px; color: #555; }
+  .email-subject { font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 3px 0; }
+  .email-item.unread .email-subject { color: #c8c8c0; }
+  .email-preview { font-size: 11px; color: #4a4a5a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .email-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+
+  #content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  #empty-state { flex: 1; display: flex; align-items: center; justify-content: center; color: #333; flex-direction: column; gap: 8px; }
+  #empty-state .icon { font-size: 40px; }
+
+  #email-header { padding: 20px 28px; border-bottom: 1px solid #1e1e2a; background: #0e0e16; flex-shrink: 0; }
+  #email-subject { font-size: 18px; font-weight: 400; margin-bottom: 12px; letter-spacing: 0.03em; }
+  #email-meta { display: flex; gap: 20px; font-size: 13px; color: #888; flex-wrap: wrap; }
+  #email-meta span { color: #bbb; }
+
+  #email-body { padding: 24px 28px; font-size: 14px; line-height: 1.7; color: #c8c8c0; border-bottom: 1px solid #1e1e2a; max-height: 280px; overflow-y: auto; flex-shrink: 0; }
+  #email-body img { max-width: 100%; filter: invert(0.85) hue-rotate(180deg); }
+
+  #ai-panel { padding: 20px 28px; background: #0c0c13; flex-shrink: 0; }
+  #ai-modes { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .mode-btn { padding: 7px 16px; background: transparent; border: 1px solid #2a2a3a; color: #666; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: Georgia, serif; }
+  .mode-btn.active { background: #1a1a2e; border-color: #0078d4; color: #7aafff; }
+  #analyze-btn { margin-left: auto; padding: 7px 20px; background: #0078d4; border: none; color: #fff; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: Georgia, serif; }
+  #analyze-btn:disabled { opacity: 0.7; cursor: wait; }
+  #ai-result { background: #111120; border: 1px solid #1e1e30; border-radius: 4px; padding: 16px; margin-bottom: 14px; font-size: 13px; line-height: 1.7; color: #c8d8f0; white-space: pre-wrap; display: none; }
+  #reply-section { display: none; }
+  #reply-textarea { width: 100%; background: #111120; border: 1px solid #2a2a3a; border-radius: 4px; padding: 12px; color: #e8e8e0; font-size: 13px; line-height: 1.6; resize: vertical; outline: none; font-family: Georgia, serif; }
+  #reply-actions { display: flex; justify-content: flex-end; margin-top: 8px; gap: 10px; align-items: center; }
+  #send-btn { padding: 9px 24px; background: #0078d4; border: none; color: #fff; border-radius: 3px; cursor: pointer; font-size: 13px; font-family: Georgia, serif; }
+  #send-btn:disabled { opacity: 0.7; }
+  #sent-msg { color: #4caf50; font-size: 13px; display: none; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div>
+    <div class="login-icon">✉</div>
+    <h1>Assistant Mail</h1>
+    <p>Connectez-vous à votre Outlook professionnel</p>
+    <button id="login-btn" onclick="login()">Se connecter avec Microsoft</button>
+    <p class="login-note">Authentification sécurisée via Microsoft OAuth 2.0</p>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div>
+    <div style="font-size:32px;margin-bottom:12px;">⟳</div>
+    <p>Chargement de vos mails…</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="header">
+    <span style="font-size:22px">✉</span>
+    <div>
+      <div class="title">Assistant Mail</div>
+      <div class="subtitle" id="user-info"></div>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">Tous</button>
+      <button class="filter-btn" onclick="setFilter('unread', this)">Non lus</button>
+      <button class="filter-btn" onclick="setFilter('important', this)">Importants</button>
+    </div>
+  </div>
+  <div id="main">
+    <div id="sidebar">
+      <div id="search-box">
+        <input id="search-input" type="text" placeholder="Rechercher…" oninput="renderEmails()">
+      </div>
+      <div id="mail-count"></div>
+      <div id="email-list"></div>
+    </div>
+    <div id="content">
+      <div id="empty-state">
+        <div class="icon">✉</div>
+        <p style="font-size:14px">Sélectionnez un mail</p>
+      </div>
+      <div id="email-view" style="display:none;flex-direction:column;flex:1;">
+        <div id="email-header">
+          <div id="email-subject"></div>
+          <div id="email-meta"></div>
+        </div>
+        <div id="email-body"></div>
+        <div id="ai-panel">
+          <div id="ai-modes">
+            <button class="mode-btn active" onclick="setMode('summarize', this)">📋 Résumer</button>
+            <button class="mode-btn" onclick="setMode('reply', this)">✍️ Rédiger réponse</button>
+            <button class="mode-btn" onclick="setMode('actions', this)">✅ Actions</button>
+            <button class="mode-btn" onclick="setMode('priority', this)">🔥 Priorité</button>
+            <button id="analyze-btn" onclick="runAI()">Analyser avec IA</button>
+          </div>
+          <div id="ai-result"></div>
+          <div id="reply-section">
+            <textarea id="reply-textarea" rows="5"></textarea>
+            <div id="reply-actions">
+              <span id="sent-msg">✓ Envoyé !</span>
+              <button id="send-btn" onclick="sendReply()">Envoyer la réponse</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID = "fa137b9a-2824-4ad6-876b-e46d7a78575e";
+const TENANT_ID = "b0be410b-917c-4d80-b8b9-ce8a53169047";
+const SCOPES = "Mail.Read Mail.ReadWrite Mail.Send User.Read";
+const REDIRECT_URI = window.location.href.split("?")[0].split("#")[0];
+const AUTH_URL = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}&response_mode=fragment`;
+const GRAPH = "https://graph.microsoft.com/v1.0";
+
+let token = null;
+let emails = [];
+let selectedEmail = null;
+let currentFilter = "all";
+let currentMode = "summarize";
+
+// Check token in URL on load
+window.onload = () => {
+  const hash = window.location.hash;
+  if (hash.includes("access_token")) {
+    const params = new URLSearchParams(hash.substring(1));
+    token = params.get("access_token");
+    window.history.replaceState({}, "", window.location.pathname);
+    showApp();
+  }
+};
+
+function login() {
+  window.location.href = AUTH_URL;
+}
+
+async function graphFetch(url, options = {}) {
+  const res = await fetch(GRAPH + url, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(options.headers || {}) }
+  });
+  if (!res.ok) throw new Error(`Graph error: ${res.status}`);
+  return res.json();
+}
+
+async function showApp() {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("loading-screen").style.display = "flex";
+  try {
+    const [user, mails] = await Promise.all([
+      graphFetch("/me"),
+      graphFetch("/me/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,receivedDateTime,isRead,bodyPreview,hasAttachments,importance")
+    ]);
+    document.getElementById("user-info").textContent = `${user.displayName} · ${user.mail}`;
+    emails = mails.value || [];
+    renderEmails();
+    document.getElementById("loading-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+  } catch (e) {
+    alert("Erreur de connexion : " + e.message);
+  }
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr);
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}j`;
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderEmails();
+}
+
+function renderEmails() {
+  const search = document.getElementById("search-input").value.toLowerCase();
+  const filtered = emails.filter(e => {
+    const matchFilter = currentFilter === "all" || (currentFilter === "unread" && !e.isRead) || (currentFilter === "important" && e.importance === "high");
+    const matchSearch = !search || (e.subject || "").toLowerCase().includes(search) || (e.from?.emailAddress?.name || "").toLowerCase().includes(search);
+    return matchFilter && matchSearch;
+  });
+  document.getElementById("mail-count").textContent = `${filtered.length} MESSAGE${filtered.length !== 1 ? "S" : ""}`;
+  const list = document.getElementById("email-list");
+  list.innerHTML = filtered.map(e => `
+    <div class="email-item ${!e.isRead ? "unread" : ""} ${selectedEmail?.id === e.id ? "active" : ""}" onclick="loadEmail('${e.id}')">
+      <div class="email-row">
+        <span class="email-sender">${e.from?.emailAddress?.name || e.from?.emailAddress?.address || ""}</span>
+        <span class="email-time">${timeAgo(e.receivedDateTime)}</span>
+      </div>
+      <div class="email-subject">${e.subject || "(Sans objet)"}</div>
+      <div class="email-preview">${e.bodyPreview || ""}</div>
+    </div>
+  `).join("");
+}
+
+async function loadEmail(id) {
+  document.getElementById("ai-result").style.display = "none";
+  document.getElementById("reply-section").style.display = "none";
+  document.getElementById("sent-msg").style.display = "none";
+  try {
+    const full = await graphFetch(`/me/messages/${id}?$select=id,subject,from,toRecipients,receivedDateTime,body,bodyPreview,isRead`);
+    selectedEmail = full;
+    // Mark as read
+    const emailInList = emails.find(e => e.id === id);
+    if (emailInList && !emailInList.isRead) {
+      await fetch(`${GRAPH}/me/messages/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true })
+      });
+      emailInList.isRead = true;
+      renderEmails();
+    }
+    // Show email
+    document.getElementById("email-subject").textContent = full.subject || "(Sans objet)";
+    document.getElementById("email-meta").innerHTML = `De : <span>${full.from?.emailAddress?.name || ""} &lt;${full.from?.emailAddress?.address || ""}&gt;</span> &nbsp;|&nbsp; ${new Date(full.receivedDateTime).toLocaleString("fr-FR")}`;
+    const bodyEl = document.getElementById("email-body");
+    if (full.body?.contentType === "html") {
+      bodyEl.innerHTML = full.body.content;
+      bodyEl.style.filter = "invert(0.85) hue-rotate(180deg)";
+    } else {
+      bodyEl.style.filter = "";
+      bodyEl.textContent = full.body?.content || full.bodyPreview || "";
+    }
+    document.getElementById("empty-state").style.display = "none";
+    document.getElementById("email-view").style.display = "flex";
+  } catch (e) {
+    alert("Erreur chargement mail : " + e.message);
+  }
+}
+
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function stripHtml(html) {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  return div.textContent || div.innerText || "";
+}
+
+async function runAI() {
+  if (!selectedEmail) return;
+  const btn = document.getElementById("analyze-btn");
+  btn.disabled = true;
+  btn.textContent = "Analyse…";
+  document.getElementById("ai-result").style.display = "none";
+  document.getElementById("reply-section").style.display = "none";
+
+  const body = selectedEmail.body?.contentType === "html"
+    ? stripHtml(selectedEmail.body.content)
+    : (selectedEmail.body?.content || selectedEmail.bodyPreview);
+
+  const prompts = {
+    summarize: `Résume ce mail en 3-4 lignes claires en français :\n\nDe : ${selectedEmail.from?.emailAddress?.name}\nObjet : ${selectedEmail.subject}\n\n${body}`,
+    reply: `Rédige une réponse professionnelle et courtoise en français à ce mail :\n\nDe : ${selectedEmail.from?.emailAddress?.name}\nObjet : ${selectedEmail.subject}\n\n${body}`,
+    actions: `Identifie les actions concrètes à effectuer suite à ce mail. Liste-les avec - [ ] :\n\nDe : ${selectedEmail.from?.emailAddress?.name}\nObjet : ${selectedEmail.subject}\n\n${body}`,
+    priority: `Analyse l'urgence de ce mail (Critique/Haute/Normale/Basse) et explique pourquoi :\n\nDe : ${selectedEmail.from?.emailAddress?.name}\nObjet : ${selectedEmail.subject}\n\n${body}`,
+  };
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompts[currentMode] }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || "Aucune réponse";
+    const resultEl = document.getElementById("ai-result");
+    resultEl.textContent = text;
+    resultEl.style.display = "block";
+    if (currentMode === "reply") {
+      document.getElementById("reply-textarea").value = text;
+      document.getElementById("reply-section").style.display = "block";
+      document.getElementById("send-btn").disabled = false;
+      document.getElementById("send-btn").textContent = "Envoyer la réponse";
+    }
+  } catch (e) {
+    document.getElementById("ai-result").textContent = "Erreur lors de l'analyse.";
+    document.getElementById("ai-result").style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Analyser avec IA";
+  }
+}
+
+async function sendReply() {
+  if (!selectedEmail) return;
+  const text = document.getElementById("reply-textarea").value.trim();
+  if (!text) return;
+  const btn = document.getElementById("send-btn");
+  btn.disabled = true;
+  btn.textContent = "Envoi…";
+  try {
+    await fetch(`${GRAPH}/me/messages/${selectedEmail.id}/reply`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ comment: text })
+    });
+    document.getElementById("sent-msg").style.display = "inline";
+    btn.textContent = "Envoyé";
+    btn.style.background = "#1e3a1e";
+    btn.style.color = "#4caf50";
+  } catch (e) {
+    alert("Erreur lors de l'envoi.");
+    btn.disabled = false;
+    btn.textContent = "Envoyer la réponse";
+  }
+}
+</script>
+</body>
+</html>
